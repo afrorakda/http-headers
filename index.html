@@ -27,6 +27,7 @@
             justify-content: center;
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
+            user-select: none; /* 全体的に選択不可にして道具感を出す */
         }
 
         .container {
@@ -43,7 +44,6 @@
         h1 { font-size: 1.8rem; font-weight: 800; margin: 0; letter-spacing: -1px; }
         .subtitle { font-size: 0.85rem; color: var(--text-gray); font-weight: 600; margin-top: 4px; }
 
-        /* ヘッダー種別選択チップ */
         .chip-container {
             display: flex;
             flex-wrap: wrap;
@@ -60,20 +60,15 @@
             font-weight: 700;
             cursor: pointer;
             color: var(--main);
+            -webkit-tap-highlight-color: transparent;
         }
-        .chip.active {
-            background: var(--main);
-            color: #fff;
-        }
+        .chip.active { background: var(--main); color: #fff; }
 
-        .input-wrapper { 
-            position: relative; 
-            margin-bottom: 15px;
-        }
+        .input-wrapper { position: relative; margin-bottom: 15px; }
         
         textarea {
             width: 100%;
-            height: 120px;
+            height: 100px;
             padding: 15px;
             padding-right: 45px;
             border: 2px solid var(--accent);
@@ -89,6 +84,7 @@
             -webkit-appearance: none;
             -webkit-text-fill-color: var(--main) !important;
             opacity: 1 !important;
+            user-select: text; /* 入力欄だけは選択可能に */
         }
         textarea::placeholder { color: #ccc; -webkit-text-fill-color: #ccc; }
 
@@ -106,13 +102,37 @@
             font-weight: 800;
             cursor: pointer;
             display: none;
-            align-items: center;
-            justify-content: center;
+            align-items: center; justify-content: center;
         }
         .clr-btn.active { display: flex; }
 
+        /* 出力形式切り替えトグル */
+        .format-toggle {
+            display: flex;
+            background: var(--accent);
+            border-radius: var(--radius);
+            margin-bottom: 10px;
+            padding: 4px;
+        }
+        .format-toggle button {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 6px;
+            font-size: 11px;
+            font-weight: 800;
+            border-radius: 11px;
+            cursor: pointer;
+            color: #888;
+        }
+        .format-toggle button.active {
+            background: #fff;
+            color: var(--main);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
         .output-area {
-            background: #f0f0f0;
+            background: #f9f9f9;
             padding: 15px;
             border-radius: var(--radius);
             font-family: monospace;
@@ -120,8 +140,9 @@
             text-align: left;
             word-break: break-all;
             margin-bottom: 15px;
-            min-height: 60px;
-            border: 2px dashed #ccc;
+            min-height: 50px;
+            border: 2px dashed #ddd;
+            cursor: pointer;
             position: relative;
         }
 
@@ -135,23 +156,21 @@
             font-size: 1.1rem;
             font-weight: 800;
             cursor: pointer;
-            transition: all 0.2s;
             margin-bottom: 20px;
+            -webkit-tap-highlight-color: transparent;
         }
-        .generate-btn:active { transform: scale(0.98); opacity: 0.9; }
+        .generate-btn:active { transform: scale(0.98); }
         .generate-btn.success { background: #4caf50; }
 
         .footer-btns { display: flex; gap: 10px; margin-bottom: 20px; }
         .kofi-btn {
-            flex: 6;
-            background: var(--main); color: #fff;
+            flex: 6; background: var(--main); color: #fff;
             padding: 12px; border-radius: var(--radius);
             text-decoration: none; font-weight: bold; font-size: 13px;
             display: flex; align-items: center; justify-content: center;
         }
         .home-btn {
-            flex: 4;
-            background: var(--accent); color: var(--main);
+            flex: 4; background: var(--accent); color: var(--main);
             border: none; padding: 12px;
             border-radius: var(--radius); font-weight: 800; font-size: 12px; 
             cursor: pointer;
@@ -191,8 +210,13 @@
         <button class="clr-btn" id="clrBtn" onclick="clearText()">×</button>
     </div>
 
-    <div class="output-area" id="output">
-        <span style="color:#bbb">Result will appear here...</span>
+    <div class="format-toggle">
+        <button id="btnCurl" class="active" onclick="setFormat('curl')">cURL (-H)</button>
+        <button id="btnRaw" onclick="setFormat('raw')">Raw (Key: Val)</button>
+    </div>
+
+    <div class="output-area" id="output" onclick="copyResult()">
+        <span style="color:#bbb">Result...</span>
     </div>
 
     <button class="generate-btn" id="genBtn" onclick="copyResult()">COPY HEADER</button>
@@ -225,17 +249,22 @@
     const output = document.getElementById('output');
 
     let currentMode = 'auth';
+    let currentFormat = 'curl';
 
     function setMode(mode, el) {
         currentMode = mode;
         document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
         el.classList.add('active');
-        
-        // モードに合わせてプレースホルダー変更
-        if(mode === 'json') valInput.placeholder = "Not required (application/json)";
-        else if(mode === 'custom') valInput.placeholder = "Key: Value";
+        if(mode === 'json') valInput.placeholder = "Auto-filled: application/json";
+        else if(mode === 'custom') valInput.placeholder = "Example -> X-Custom: Value";
         else valInput.placeholder = "Enter token or value...";
-        
+        updateUI();
+    }
+
+    function setFormat(fmt) {
+        currentFormat = fmt;
+        document.getElementById('btnCurl').classList.toggle('active', fmt === 'curl');
+        document.getElementById('btnRaw').classList.toggle('active', fmt === 'raw');
         updateUI();
     }
 
@@ -243,23 +272,15 @@
         const val = valInput.value.trim();
         clrBtn.classList.toggle('active', val !== '');
         
-        let result = "";
+        let headerStr = "";
         switch(currentMode) {
-            case 'auth':
-                result = `-H "Authorization: Bearer ${val || '[TOKEN]'}"`;
-                break;
-            case 'json':
-                result = `-H "Content-Type: application/json"`;
-                break;
-            case 'apikey':
-                result = `-H "x-api-key: ${val || '[KEY]'}"`;
-                break;
-            case 'custom':
-                result = val ? `-H "${val}"` : `-H "[KEY]: [VALUE]"`;
-                break;
+            case 'auth': headerStr = `Authorization: Bearer ${val || '[TOKEN]'}`; break;
+            case 'json': headerStr = `Content-Type: application/json`; break;
+            case 'apikey': headerStr = `x-api-key: ${val || '[KEY]'}`; break;
+            case 'custom': headerStr = val || `X-Custom: Value`; break;
         }
         
-        output.innerText = result;
+        output.innerText = (currentFormat === 'curl') ? `-H "${headerStr}"` : headerStr;
     }
 
     function clearText() {
@@ -270,7 +291,7 @@
 
     async function copyResult() {
         const text = output.innerText;
-        if (!text || text.includes('Result will appear')) return;
+        if (!text || text.includes('Result...')) return;
 
         try {
             await navigator.clipboard.writeText(text);
@@ -280,16 +301,13 @@
             setTimeout(() => {
                 genBtn.innerText = originalText;
                 genBtn.classList.remove('success');
-            }, 1500);
-        } catch (err) {
-            console.error(err);
-        }
+            }, 1000);
+        } catch (err) {}
     }
 
     function showModal() { document.getElementById('modal').style.display = 'flex'; }
     function hideModal() { document.getElementById('modal').style.display = 'none'; }
 
-    // 初期表示
     updateUI();
 </script>
 
