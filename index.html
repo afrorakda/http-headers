@@ -27,7 +27,10 @@
             justify-content: center;
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
-            user-select: none; /* 全体的に選択不可にして道具感を出す */
+            /* 全体で長押しメニューと選択を禁止 */
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         .container {
@@ -84,7 +87,10 @@
             -webkit-appearance: none;
             -webkit-text-fill-color: var(--main) !important;
             opacity: 1 !important;
-            user-select: text; /* 入力欄だけは選択可能に */
+            /* 入力欄だけは長押し・選択を許可 */
+            -webkit-touch-callout: default;
+            -webkit-user-select: text;
+            user-select: text;
         }
         textarea::placeholder { color: #ccc; -webkit-text-fill-color: #ccc; }
 
@@ -103,10 +109,10 @@
             cursor: pointer;
             display: none;
             align-items: center; justify-content: center;
+            -webkit-tap-highlight-color: transparent;
         }
         .clr-btn.active { display: flex; }
 
-        /* 出力形式切り替えトグル */
         .format-toggle {
             display: flex;
             background: var(--accent);
@@ -124,6 +130,7 @@
             border-radius: 11px;
             cursor: pointer;
             color: #888;
+            -webkit-tap-highlight-color: transparent;
         }
         .format-toggle button.active {
             background: #fff;
@@ -143,7 +150,7 @@
             min-height: 50px;
             border: 2px dashed #ddd;
             cursor: pointer;
-            position: relative;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .generate-btn {
@@ -168,12 +175,14 @@
             padding: 12px; border-radius: var(--radius);
             text-decoration: none; font-weight: bold; font-size: 13px;
             display: flex; align-items: center; justify-content: center;
+            -webkit-tap-highlight-color: transparent;
         }
         .home-btn {
             flex: 4; background: var(--accent); color: var(--main);
             border: none; padding: 12px;
             border-radius: var(--radius); font-weight: 800; font-size: 12px; 
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
         }
 
         footer { font-size: 10px; color: #aaa; line-height: 1.6; font-weight: 500; padding-bottom: 10px; }
